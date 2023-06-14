@@ -1,695 +1,476 @@
 .data
-    SHIP_LENGTHS: .word 2, 3, 3, 4, 5
-    board: .space 100
-    seed_prompt: .asciiz "Digite a semente para gerar a distribuição das embarcações: "
-    coords_prompt: .asciiz "Digite as coordenadas (linha coluna): "
-    hit_message: .asciiz "Acertou um navio!\n"
-    water_message: .asciiz "Água...\n"
-    invalid_coords_message: .asciiz "Coordenadas inválidas!\n"
-    end_game_message: .asciiz "Relatório da partida:\n"
-    attempts_message: .asciiz "Número de tentativas: "
-    board_header: .asciiz "  0 1 2 3 4 5 6 7 8 9\n"
-    new_line: .asciiz "\n"
-    spc: .asciiz " "
+a:  .word 1103515245  # Constante multiplicativa
+m:  .word 12345  # Constante aditiva
+c:  .word 10  # Módulo
+line0:	.byte '*','*','*','*','*','*','*','*','*','*'	
+line1:	.byte '*','*','*','*','*','*','*','*','*','*'
+line2:	.byte '*','*','*','*','*','*','*','*','*','*'
+line3:	.byte '*','*','*','*','*','*','*','*','*','*'
+line4:	.byte '*','*','*','*','*','*','*','*','*','*'
+line5:	.byte '*','*','*','*','*','*','*','*','*','*'
+line6:	.byte '*','*','*','*','*','*','*','*','*','*'
+line7:	.byte '*','*','*','*','*','*','*','*','*','*'
+line8:	.byte '*','*','*','*','*','*','*','*','*','*'
+line9:	.byte '*','*','*','*','*','*','*','*','*','*'
+barco:	.byte 'x'
+	
+	welcome_msg:	.asciiz "Seja bem vindo ao Batalha Naval! Boa sorte!\n"
+	seed_rqst: 		.asciiz "\nInforme a seed para organizacao do tabuleiro: "
+	spc: 			.asciiz " "
+	linebreak:		.asciiz "\n"
+	linha:			.asciiz "linha: "
+	coluna: 		.asciiz "coluna: "
+	passou: 		.asciiz "passou"
 
 .text
-.globl main
-
+	.globl main
 main:
-    BOARD_SIZE = 10
-    NUM_SHIPS = 5
-    PRINT_STR = 4
-    PRINT_INT = 1
-    PRINT_CHAR = 11
-    READ_INT = 5
-    EXIT = 10
-    # $s0 => seed
-    # $s1 => tentativas
-    # $t0 => tabuleiro
-    # $t1 => navios restantes
+	PRINT_STR = 4
+	PRINT_CHAR = 11
+	PRINT_INT = 1
+	READ_INT = 5
+	END_PROGRAM = 10
+	
+	jal welcome				# chama função de dar boas-vindas ao usuário
+	jal inicializaGeraAleatorio	# função para atribuir valores da geração aleatória
+	jal printMatriz			# chama função de printar a matriz
+	jal posicionaHorizontal4 #chama a função para posicionar embarcações de 4 espaços
+	jal printMatriz			# chama função de printar a matriz
+	jal posicionaHorizontal4 #chama a função para posicionar embarcações de 4 espaços
+	jal printMatriz			# chama função de printar a matriz
 
-    # Configurar a localização do tabuleiro
-    la $t0, board
+	
+	li $v0, END_PROGRAM		# terminate program
+	syscall
+	
 
-    # Solicitar a seed ao usuário
-    la $a0, seed_prompt
+# BOAS-VINDAS
+welcome:
+	li $v0, PRINT_STR		# syscall 4 (print string)
+	la $a0, welcome_msg		# argument (string)
+	syscall					# print the string (welcome_msg)
+	
+	li $v0, PRINT_STR		# syscall 4 (print string)
+	la $a0, seed_rqst		# argument (string)
+	syscall					# print the string (seed_rqst)
+	
+	li $v0, READ_INT		# syscall 5 (read integer)
+	syscall
+	
+	jr $ra
+	
+# GERAÇÃO DE VALORES ALEATÓRIOS	
+inicializaGeraAleatorio:
+	move $t0, $v0          # armazena a seed em $t0
+    lw $t1, a
+    lw $t2, m
+    lw $t3, c
+	jr $ra
+generateRandom:
+    mul $t0, $t0, $t1     # t0 = t0 * a
+    addu $t0, $t0, $t2    # t0 = t0 + c
+    rem $t0, $t0, $t3     # t0 = t0 % m
+
+    # Verifica se o valor é negativo
+    bltz $t0, convert_to_positive
+	
     li $v0, PRINT_STR
+    la $a0, linha
     syscall
 
-    # Ler a seed
-    li $v0, READ_INT        # read integer
-    syscall            
-    move $s0, $v0            # salvar o valor lido em $s0
-
-    # Inicializar o gerador de números aleatórios com a seed
-    move $a0, $s0
-    li $v0, 42               # código para inicializar o gerador de números aleatórios
-    syscall
-
-    # Colocar os navios no tabuleiro
-    la $t1, SHIP_LENGTHS
-    lw $t2, NUM_SHIPS
-    li $v0, PRINT_INT
-place_ships_loop:
-    lw $t3, 0($t1)
-    li $t4, 0
-place_ship_loop:
-    move $a0, $t0            # salvar o tabuleiro em $a0
-    move $a1, $t3            # salvar o tamanho do navio em $a1    
-    move $a2, $t4 
-    jal canPlaceShip
-    beqz $v0, place_ship_invalid
+    # Imprime o valor aleatório da linha
     move $a0, $t0
-    move $a1, $t3
-    move $a2, $t4
-    jal placeShip
-    addi $t4, $t4, 1
-    blt $t4, $t3, place_ship_loop
-    addi $t1, $t1, 4
-    addi $t2, $t2, -1
-    bnez $t2, place_ships_loop
-
-    # Exibir o tabuleiro inicial
-    jal printBoard
-
-    # Variáveis para o relatório da partida
-    li $s1, 0                # tentativas
-
-game_loop:
-    # Solicitar coordenadas ao usuário
-    la $a0, coords_prompt
-    li $v0, PRINT_STR
-    syscall
-
-    # Ler coordenadas
-    li $v0, READ_INT        # read integer (linha)
-    syscall
-    move $a0, $v0            # salvar a linha em $a0
-
-    li $v0, READ_INT        # read integer (coluna)
-    syscall
-    move $a1, $v0            # salvar a coluna em $a1
-
-    # Validar coordenadas
-    jal validCoords
-    beqz $v0, invalid_coords
-
-    # Verificar se acertou um navio
-    move $a0, $t0            # salvar o tabuleiro em $a0
-    move $a1, $s1            # salvar o número de tentativas em $a1
-    jal hitShip
-    beqz $v0, hit
-
-    # Exibir mensagem de água
-    la $a0, water_message
-    li $v0, PRINT_STR
-    syscall
-
-    b continue_game
-
-hit:
-    # Exibir mensagem de acerto
-    la $a0, hit_message
-    li $v0, PRINT_STR
-    syscall
-
-continue_game:
-    # Incrementar o número de tentativas
-    addi $s1, $s1, 1
-
-    # Exibir tabuleiro
-    jal printBoard
-
-    # Verificar se todos os navios foram afundados
-    move $a0, $t0            # salvar o tabuleiro em $a0
-    jal allShipsSunk
-    beqz $v0, game_loop
-
-    # Exibir relatório da partida
-    la $a0, end_game_message
-    li $v0, PRINT_STR
-    syscall
-
-    # Exibir número de tentativas
-    la $a0, attempts_message
-    li $v0, PRINT_STR
-    syscall
-    move $a0, $s1            # salvar o número de tentativas em $a0
     li $v0, PRINT_INT
     syscall
 
-    # Sair do jogo
-    li $v0, EXIT
-    syscall
-
-place_ship_invalid:
-    la $a0, invalid_coords_message
     li $v0, PRINT_STR
+    la $a0, linebreak
     syscall
-    b place_ship_loop
 
-invalid_coords:
-    la $a0, invalid_coords_message
+    move $s0, $t0  # salva a linha em $s0
+
+    mul $t0, $t0, $t1  # t0 = t0 * a
+    addu $t0, $t0, $t2  # t0 = t0 + c
+    rem $t0, $t0, $t3  # t0 = t0 % m
+
+    # Verifica se o valor é negativo
+    bltz $t0, convert_to_positive
+
     li $v0, PRINT_STR
-    syscall
-    j game_loop
-
-# Função para verificar se é possível posicionar um navio em determinada posição
-# Argumentos:
-# $a0 - ponteiro para o tabuleiro
-# $a1 - tamanho do navio
-# $a2 - orientação (0 - horizontal, 1 - vertical)
-# Retorna:
-# $v0 - 1 se é possível posicionar o navio, 0 caso contrário
-canPlaceShip:
-    move $v0, $zero
-    move $t3, $zero
-
-can_place_ship_loop:
-    # Verificar se a posição atual está fora dos limites do tabuleiro
-    bge $t3, $a1, can_place_ship_end
-    add $t4, $a0, $t3
-    lw $t5, BOARD_SIZE
-    add $t5, $t5, $t3
-    bge $t4, $t5, can_place_ship_end
-
-    # Verificar se a posição atual já está ocupada por um navio
-    lw $t6, 0($t4)
-    bnez $t6, can_place_ship_end
-
-    # Verificar se a posição abaixo (horizontal) ou à direita (vertical) está ocupada por um navio
-    addi $t5, $t3, 1
-    add $t5, $a0, $t5
-    lw $t6, 0($t5)
-    bnez $t6, can_place_ship_end
-
-    addi $t3, $t3, 1
-    j can_place_ship_loop
-
-can_place_ship_end:
-    # Verificar se todas as posições foram verificadas
-    beq $t3, $a1, can_place_ship_valid
-
-    # Se não, não é possível posicionar o navio
-    j can_place_ship_invalid
-
-can_place_ship_valid:
-    # Se sim, é possível posicionar o navio
-    li $v0, 1
-    j can_place_ship_exit
-
-can_place_ship_invalid:
-    # Se não, não é possível posicionar o navio
-    li $v0, 0
-
-can_place_ship_exit:
-    jr $ra
-
-# Função para posicionar um navio no tabuleiro
-# Argumentos:
-# $a0 - ponteiro para o tabuleiro
-# $a1 - tamanho do navio
-# $a2 - orientação (0 - horizontal, 1 - vertical)
-placeShip:
-    move $t3, $zero
-
-place_ship_loop:
-    # Colocar o valor do navio na posição atual
-    add $t4, $a0, $t3
-    li $t5, 1
-    sw $t5, 0($t4)
-
-    # Incrementar a posição
-    addi $t3, $t3, 1
-
-    # Verificar se todas as posições do navio foram preenchidas
-    beq $t3, $a1, place_ship_exit
-
-    # Se não, continuar preenchendo as posições
-    j place_ship_loop
-
-place_ship_exit:
-    jr $ra
-
-# Função para verificar se uma posição contém um navio
-# Argumentos:
-# $a0 - ponteiro para o tabuleiro
-# $a1 - número de tentativas
-# Retorna:
-# $v0 - 1 se acertou um navio, 0 caso contrário
-hitShip:
-    move $v0, $zero
-
-    # Verificar se a posição contém um navio
-    lw $t2, 0($a0)
-    bnez $t2, hit_ship_hit
-
-    # Se não, verificar se o número de tentativas excedeu o máximo permitido
-    li $t3, 17
-    blt $a1, $t3, hit_ship_exit
-
-    # Se sim, encerrar o jogo
-    li $v0, 1
-    j hit_ship_exit
-
-hit_ship_hit:
-    # Se sim, acertou um navio
-    li $v0, 1
-
-    # Marcar a posição como acertada
-    li $t2, -1
-    sw $t2, 0($a0)
-
-hit_ship_exit:
-    jr $ra
-
-# Função para verificar se todos os navios foram afundados
-# Argumento:
-# $a0 - ponteiro para o tabuleiro
-# Retorna:
-# $v0 - 1 se todos os navios foram afundados, 0 caso contrário
-allShipsSunk:
-    move $v0, $zero
-    move $t1, $zero
-
-all_ships_sunk_loop:
-    # Verificar se a posição atual contém um navio
-    lw $t2, 0($a0)
-    bnez $t2, all_ships_sunk_not_sunk
-
-    addi $a0, $a0, 4
-    addi $t1, $t1, 1
-    j all_ships_sunk_loop
-
-all_ships_sunk_not_sunk:
-    # Se sim, nem todos os navios foram afundados
-    bnez $t1, all_ships_sunk_exit
-
-    # Se não, todos os navios foram afundados
-    li $v0, 1
-
-all_ships_sunk_exit:
-    jr $ra
-
-# Função para validar as coordenadas digitadas pelo usuário
-# Argumento:
-# $a0 - linha
-# $a1 - coluna
-# Retorna:
-# $v0 - 1 se as coordenadas são válidas, 0 caso contrário
-validCoords:
-    # Verificar se as coordenadas estão dentro dos limites do tabuleiro
-    li $t2, 10
-    bge $a0, $t2, valid_coords_invalid
-    bge $a1, $t2, valid_coords_invalid
-
-    # Se sim, as coordenadas são válidas
-    li $v0, 1
-    j valid_coords_exit
-
-valid_coords_invalid:
-    # Se não, as coordenadas são inválidas
-    li $v0, 0
-
-valid_coords_exit:
-    jr $ra
-
-# Função para exibir o tabuleiro
-# Argumento:
-# $a0 - ponteiro para o tabuleiro
-printBoard:
-    # Exibir cabeçalho do tabuleiro
-    la $a0, board_header
-    li $v0, PRINT_STR
+    la $a0, coluna
     syscall
 
-    # Exibir linhas do tabuleiro
-    li $t1, 10
-    li $t2, 0
-print_board_loop:
-    li $v0, PRINT_INT
-    move $a0, $t2            # imprimir o número da linha
-    syscall
-
-    li $v0, PRINT_CHAR
-    la $a0, spc              # imprimir espaço
-    syscall
-
-    move $t3, $zero
-print_board_line_loop:
-    add $t4, $a0, $t3
-    lw $t5, 0($t4)
-    beqz $t5, print_board_line_water
-
-    li $v0, PRINT_CHAR
-    la $a0, "X"              # imprimir "X" para navio acertado
-    syscall
-
-    b print_board_line_continue
-
-print_board_line_water:
-    li $v0, PRINT_CHAR
-    la $a0, "."              # imprimir "." para água
-    syscall
-
-print_board_line_continue:
-    addi $t3, $t3, 1
-    blt $t3, 10, print_board_line_loop
-
-    li $v0, PRINT_CHAR
-    la $a0, new_line         # imprimir nova linha
-    syscall
-
-    addi $t2, $t2, 1
-    blt $t2, 10, print_board_loop
-
-    jr $ra
-
-# Função para exibir o tabuleiro
-# Argumento:
-# $a0 - ponteiro para o tabuleiro
-printBoard:
-    # Exibir cabeçalho do tabuleiro
-    la $a0, board_header
-    li $v0, PRINT_STR
-    syscall
-
-    # Exibir linhas do tabuleiro
-    li $t1, 10
-    li $t2, 0
-print_board_loop:
-    li $v0, PRINT_INT
-    move $a0, $t2            # imprimir o número da linha
-    syscall
-
-    li $v0, PRINT_CHAR
-    la $a0, spc              # imprimir espaço
-    syscall
-
-    move $t3, $zero
-print_board_line_loop:
-    add $t4, $a0, $t3
-    lw $t5, 0($t4)
-    beqz $t5, print_board_line_water
-
-    li $v0, PRINT_CHAR
-    la $a0, "X"              # imprimir "X" para navio acertado
-    syscall
-
-    b print_board_line_continue
-
-print_board_line_water:
-    li $v0, PRINT_CHAR
-    la $a0, "."              # imprimir "." para água
-    syscall
-
-    b print_board_line_continue
-
-print_board_line_continue:
-    addi $t3, $t3, 1
-    blt $t3, 10, print_board_line_loop
-
-    li $v0, PRINT_CHAR
-    la $a0, new_line         # imprimir nova linha
-    syscall
-
-    addi $t2, $t2, 1
-    blt $t2, 10, print_board_loop
-
-    jr $ra
-
-# Função para verificar se é possível posicionar um navio em determinada posição
-# Argumentos:
-# $a0 - ponteiro para o tabuleiro
-# $a1 - tamanho do navio
-# $a2 - orientação (0 - horizontal, 1 - vertical)
-# Retorna:
-# $v0 - 1 se é possível posicionar o navio, 0 caso contrário
-canPlaceShip:
-    move $v0, $zero
-    move $t3, $zero
-
-can_place_ship_loop:
-    # Verificar se a posição atual está fora dos limites do tabuleiro
-    bge $t3, $a1, can_place_ship_end
-    add $t4, $a0, $t3
-    lw $t5, 0($t4)
-    bnez $t5, can_place_ship_invalid
-
-    # Verificar se a posição abaixo (horizontal) ou à direita (vertical) está ocupada por um navio
-    addi $t5, $t3, 1
-    add $t5, $a0, $t5
-    lw $t6, 0($t5)
-    bnez $t6, can_place_ship_invalid
-
-    addi $t3, $t3, 1
-    j can_place_ship_loop
-
-can_place_ship_end:
-    # Verificar se todas as posições foram verificadas
-    beq $t3, $a1, can_place_ship_valid
-
-    # Se não, não é possível posicionar o navio
-    j can_place_ship_invalid
-
-can_place_ship_valid:
-    # Se sim, é possível posicionar o navio
-    li $v0, 1
-    j can_place_ship_exit
-
-can_place_ship_invalid:
-    # Se não, não é possível posicionar o navio
-    li $v0, 0
-
-can_place_ship_exit:
-    jr $ra
-
-# Função para posicionar um navio no tabuleiro
-# Argumentos:
-# $a0 - ponteiro para o tabuleiro
-# $a1 - tamanho do navio
-# $a2 - orientação (0 - horizontal, 1 - vertical)
-placeShip:
-    move $t3, $zero
-
-place_ship_loop:
-    # Colocar o valor do navio na posição atual
-    add $t4, $a0, $t3
-    li $t5, 1
-    sw $t5, 0($t4)
-
-    # Incrementar a posição
-    addi $t3, $t3, 1
-
-    # Verificar se todas as posições do navio foram preenchidas
-    beq $t3, $a1, place_ship_exit
-
-    # Se não, continuar preenchendo as posições
-    j place_ship_loop
-
-place_ship_exit:
-    jr $ra
-
-# Função para verificar se uma posição contém um navio
-# Argumentos:
-# $a0 - ponteiro para o tabuleiro
-# $a1 - número de tentativas
-# Retorna:
-# $v0 - 1 se acertou um navio, 0 caso contrário
-hitShip:
-    move $v0, $zero
-
-    # Verificar se a posição contém um navio
-    lw $t2, 0($a0)
-    bnez $t2, hit_ship_hit
-
-    # Se não, verificar se o número de tentativas excedeu o máximo permitido
-    li $t3, 17
-    blt $a1, $t3, hit_ship_exit
-
-    # Se sim, encerrar o jogo
-    li $v0, 1
-    j hit_ship_exit
-
-hit_ship_hit:
-    # Se sim, acertou um navio
-    li $v0, 1
-
-    # Marcar a posição como acertada
-    li $t2, -1
-    sw $t2, 0($a0)
-
-hit_ship_exit:
-    jr $ra
-
-# Função para verificar se todos os navios foram afundados
-# Argumento:
-# $a0 - ponteiro para o tabuleiro
-# Retorna:
-# $v0 - 1 se todos os navios foram afundados, 0 caso contrário
-allShipsSunk:
-    move $v0, $zero
-    move $t1, $zero
-
-all_ships_sunk_loop:
-    # Verificar se a posição atual contém um navio
-    lw $t2, 0($a0)
-    bnez $t2, all_ships_sunk_not_sunk
-
-    addi $a0, $a0, 4
-    addi $t1, $t1, 1
-    j all_ships_sunk_loop
-
-all_ships_sunk_not_sunk:
-    # Se sim, nem todos os navios foram afundados
-    bnez $t1, all_ships_sunk_exit
-
-    # Se não, todos os navios foram afundados
-    li $v0, 1
-
-all_ships_sunk_exit:
-    jr $ra
-
-# Função para validar as coordenadas digitadas pelo usuário
-# Argumento:
-# $a0 - linha
-# $a1 - coluna
-# Retorna:
-# $v0 - 1 se as coordenadas são válidas, 0 caso contrário
-validCoords:
-    # Verificar se as coordenadas estão dentro dos limites do tabuleiro
-    li $t2, 10
-    bge $a0, $t2, valid_coords_invalid
-    bge $a1, $t2, valid_coords_invalid
-
-    # Se sim, as coordenadas são válidas
-    li $v0, 1
-    j valid_coords_exit
-
-valid_coords_invalid:
-    # Se não, as coordenadas são inválidas
-    li $v0, 0
-
-valid_coords_exit:
-    jr $ra
-
-# Função principal do jogo
-main:
-    # Inicializar o tabuleiro com água
-    la $a0, board
-    li $t1, 100
-    li $t2, 0
-init_board_loop:
-    sw $t2, 0($a0)
-    addi $a0, $a0, 4
-    addi $t2, $t2, 1
-    blt $t2, $t1, init_board_loop
-
-    # Perguntar ao jogador a semente para gerar a distribuição das embarcações
-    li $v0, PRINT_STR
-    la $a0, seed_prompt
-    syscall
-
-    # Ler a semente
-    li $v0, READ_INT
-    syscall
-    move $s0, $v0
-
-    # Inicializar o gerador de números aleatórios
-    li $v0, RANDOMIZE
-    move $a0, $s0
-    syscall
-
-    # Posicionar as embarcações no tabuleiro
-    la $a0, SHIP_LENGTHS
-    li $t1, 5
-    li $t2, 0
-place_ships_loop:
-    lw $a1, 0($a0)
-    li $v0, RANDOM
-    syscall
-    move $a2, $v0
-    andi $a2, $a2, 1
-
-    la $a0, board
-    jal canPlaceShip
-    beqz $v0, place_ships_invalid
-
-    la $a0, board
-    jal placeShip
-
-    addi $a0, $a0, 100
-    addi $a0, $a0, $t2
-    jal canPlaceShip
-    beqz $v0, place_ships_invalid
-
-    addi $a0, $a0, -100
-    addi $a0, $a0, 10
-    jal placeShip
-
-    addi $t1, $t1, -1
-    addi $a0, $a0, 40
-    addi $a0, $a0, 4
-    j place_ships_loop
-
-place_ships_invalid:
-    # Se a posição não for válida, reiniciar o processo
-    j main
-
-game_loop:
-    # Exibir o tabuleiro
-    la $a0, board
-    jal printBoard
-
-    # Perguntar ao jogador as coordenadas
-    li $v0, PRINT_STR
-    la $a0, coords_prompt
-    syscall
-
-    # Ler as coordenadas
-    li $v0, READ_INT
-    syscall
-    move $s1, $v0
-
-    # Extrair a linha e a coluna das coordenadas
-    move $t0, $s1
-    andi $s1, $s1, 15
-    srl $t0, $t0, 4
-
-    # Validar as coordenadas
+    # Imprime o valor aleatório da coluna
     move $a0, $t0
-    move $a1, $s1
-    jal validCoords
-    beqz $v0, game_loop
+    li $v0, PRINT_INT
+    syscall
 
-    # Calcular o índice da posição no tabuleiro
-    move $t1, $t0
-    mul $t1, $t1, 10
-    add $t1, $t1, $s1
-    la $a0, board
-    add $a0, $a0, $t1
-
-    # Verificar se acertou um navio
-    move $a1, $t1
-    jal hitShip
-    beqz $v0, game_loop
-
-    # Verificar se todos os navios foram afundados
-    la $a0, board
-    jal allShipsSunk
-    bnez $v0, game_over
-
-    j game_loop
-
-game_over:
-    # Exibir mensagem de vitória
     li $v0, PRINT_STR
-    la $a0, win_message
+    la $a0, linebreak
     syscall
 
-    # Encerrar o programa
-    li $v0, EXIT
-    li $a0, 0
-    syscall
+    move $s1, $t0  							# salva a coluna em $s1
 
+    j continua
 
+    convert_to_positive:
+    neg $t0, $t0  							# converte o valor negativo em positivo
+    j generateRandom  						# pula para o código de impressão da linha
+	
+posicionaHorizontal4:						# corrigir loop infinito	
+	j generateRandom						# chamada da função de gerar aleatório (colocar j caso não funcionar)
+	continua:
+	li $t0, 6								# t0 recebe o valor máximo para a coluna em uma embarcação de 4 espaços
+	bgt $s1, $t0, posicionaHorizontal4		# verifica se cabe um barco de 4 posições
+	lb $t1, barco							# t1 armazena o dado do barco
+	li $t2, 0								# inicializa o registrador t2
+	addi $t9, $s1, 4						# t9 armazena a posição final da embarcação
+	
+	move $t2, $s1							# t2 recebe o valor da coluna
+	li $t3, 0
+	beq $t3, $s0, loopLinha04
+	li $t3, 1
+	beq $t3, $s0, loopLinha14
+	li $t3, 2
+	beq $t3, $s0, loopLinha24
+	li $t3, 3
+	beq $t3, $s0, loopLinha34
+	li $t3, 4
+	beq $t3, $s0, loopLinha44
+	li $t3, 5
+	beq $t3, $s0, loopLinha54
+	li $t3, 6
+	beq $t3, $s0, loopLinha64
+	li $t3, 7
+	beq $t3, $s0, loopLinha74
+	li $t3, 8
+	beq $t3, $s0, loopLinha84
+	li $t3, 9
+	beq $t3, $s0, loopLinha94
+	loopLinha04:
+		lb $t4, line0($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha04				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao04:
+			sb $t1, line0($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao04
+			j end_loops
+	loopLinha14:
+		lb $t4, line1($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha14				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao14:
+			sb $t1, line1($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao14
+			j end_loops
+	loopLinha24:
+		lb $t4, line2($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha24				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao24:
+			sb $t1, line2($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao24
+			j end_loops
+	loopLinha34:
+		lb $t4, line3($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha34				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao34:
+			sb $t1, line3($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao34
+			j end_loops
+	loopLinha44:
+		lb $t4, line4($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha44				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao44:
+			sb $t1, line4($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao44
+			j end_loops
+	loopLinha54:
+		lb $t4, line5($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha54				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao54:
+			sb $t1, line5($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao54
+			j end_loops
+	loopLinha64:
+		lb $t4, line6($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha64				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao64:
+			sb $t1, line6($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao64
+			j end_loops
+	loopLinha74:
+		lb $t4, line7($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha74				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao74:
+			sb $t1, line7($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao74
+			j end_loops
+
+	loopLinha84:
+		lb $t4, line8($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha84				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao84:
+			sb $t1, line8($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao84
+			j end_loops
+	loopLinha94:
+		lb $t4, line9($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha94				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao94:
+			sb $t1, line9($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao94
+			j end_loops
+	end_loops:
+		jr $ra
+	# s1 = coluna
+	
+printMatriz:
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP0:
+	lb $a0, line0($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP0	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+
+PRINT_LOOP1:
+	lb $a0, line1($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP1	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP2:
+	lb $a0, line2($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP2	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP3:
+	lb $a0, line3($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP3	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+
+PRINT_LOOP4:
+	lb $a0, line4($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP4	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP5:
+	lb $a0, line5($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP5	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP6:
+	lb $a0, line6($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP6	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP7:
+	lb $a0, line7($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP7	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP8:
+	lb $a0, line8($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP8	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP9:
+	lb $a0, line9($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP9	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+
+	jr $ra

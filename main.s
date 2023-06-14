@@ -1,32 +1,18 @@
 .data
-a:  
-	.word 1103515245  # Constante multiplicativa
-m:  
-	.word 12345  # Constante aditiva
-c:  
-	.word 10  # Módulo
-line0: 
-	.byte '*','*','*','*','*','*','*','*','*','*'	
-line1: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line2: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line3: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line4: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line5: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line6: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line7: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line8: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-line9: 
-	.byte '*','*','*','*','*','*','*','*','*','*'
-barco:
-	.byte 'x'
+a:  .word 1103515245  # Constante multiplicativa
+m:  .word 12345  # Constante aditiva
+c:  .word 10  # Módulo
+line0:	.byte '*','*','*','*','*','*','*','*','*','*'	
+line1:	.byte '*','*','*','*','*','*','*','*','*','*'
+line2:	.byte '*','*','*','*','*','*','*','*','*','*'
+line3:	.byte '*','*','*','*','*','*','*','*','*','*'
+line4:	.byte '*','*','*','*','*','*','*','*','*','*'
+line5:	.byte '*','*','*','*','*','*','*','*','*','*'
+line6:	.byte '*','*','*','*','*','*','*','*','*','*'
+line7:	.byte '*','*','*','*','*','*','*','*','*','*'
+line8:	.byte '*','*','*','*','*','*','*','*','*','*'
+line9:	.byte '*','*','*','*','*','*','*','*','*','*'
+barco:	.byte 'x'
 	
 	welcome_msg:	.asciiz "Seja bem vindo ao Batalha Naval! Boa sorte!\n"
 	seed_rqst: 		.asciiz "\nInforme a seed para organizacao do tabuleiro: "
@@ -34,6 +20,7 @@ barco:
 	linebreak:		.asciiz "\n"
 	linha:			.asciiz "linha: "
 	coluna: 		.asciiz "coluna: "
+	passou: 		.asciiz "passou"
 
 .text
 	.globl main
@@ -45,12 +32,13 @@ main:
 	END_PROGRAM = 10
 	
 	jal welcome				# chama função de dar boas-vindas ao usuário
+	jal inicializaGeraAleatorio	# função para atribuir valores da geração aleatória
 	jal printMatriz			# chama função de printar a matriz
 	jal posicionaHorizontal4 #chama a função para posicionar embarcações de 4 espaços
-	jal posicionaHorizontal2 #chama a função para posicionar embarcações de 2 espaços
-	#jal posicionaHorizontal1 #chama a função para posicionar embarcações de 1 espaços
-
 	jal printMatriz			# chama função de printar a matriz
+	jal posicionaHorizontal4 #chama a função para posicionar embarcações de 4 espaços
+	jal printMatriz			# chama função de printar a matriz
+
 	
 	li $v0, END_PROGRAM		# terminate program
 	syscall
@@ -72,66 +60,73 @@ welcome:
 	jr $ra
 	
 # GERAÇÃO DE VALORES ALEATÓRIOS	
-geraAleatorio:
-	move $t0, $v0			# armazena a seed em $t0
-	lw $t1, a
+inicializaGeraAleatorio:
+	move $t0, $v0          # armazena a seed em $t0
+    lw $t1, a
     lw $t2, m
     lw $t3, c
-	li $t4, 2  # Gera três valores aleatórios (altere conforme necessário)
-    # Calcula o próximo valor aleatório
-generateRandom:
-	mul $t0, $t0, $t1  # t0 = t0 * a
-    addu $t0, $t0, $t2  # t0 = t0 + c
-    rem $t0, $t0, $t3  # t0 = t0 % m
-    
-	li $v0, PRINT_STR
-	la $a0, linha
-	syscall
-	
-	# Imprime o valor aleatório
-    move $a0, $t0
-    li $v0, PRINT_INT
-    syscall
-	
-	li $v0, PRINT_STR
-	la $a0, linebreak
-	syscall
-	
-	move $s0, $t0	# salva a linha em s0
-
-	mul $t0, $t0, $t1  # t0 = t0 * a
-    addu $t0, $t0, $t2  # t0 = t0 + c
-    rem $t0, $t0, $t3  # t0 = t0 % m
-	
-	li $v0, PRINT_STR
-	la $a0, coluna
-	syscall
-	
-	# Imprime o valor aleatório
-    move $a0, $t0
-    li $v0, PRINT_INT
-    syscall
-	
-	li $v0, PRINT_STR
-	la $a0, linebreak
-	syscall
-	
-	move $s1, $t0	# salva a coluna em s1
-	    
-    # Pula para a próxima iteração ou termina o programa
-    addiu $t4, $t4, -1
-    bnez $t4, generateRandom
-	
 	jr $ra
+generateRandom:
+    mul $t0, $t0, $t1     # t0 = t0 * a
+    addu $t0, $t0, $t2    # t0 = t0 + c
+    rem $t0, $t0, $t3     # t0 = t0 % m
+
+    # Verifica se o valor é negativo
+    bltz $t0, convert_to_positive
 	
-posicionaHorizontal4:	# deve verificar para qual lado posiciona
-	jal generateRandom	# chamada da função de gerar aleatório (colocar j caso não funcionar)
-	li $t0, 6
-	bgt $s1, $t0, posicionaHorizontal4
-	li $t1, 'x'
-	move $t2, $s1	# t2 = coluna
-	addi $t9, $t0, 3
+    li $v0, PRINT_STR
+    la $a0, linha
+    syscall
+
+    # Imprime o valor aleatório da linha
+    move $a0, $t0
+    li $v0, PRINT_INT
+    syscall
+
+    li $v0, PRINT_STR
+    la $a0, linebreak
+    syscall
+
+    move $s0, $t0  # salva a linha em $s0
+
+    mul $t0, $t0, $t1  # t0 = t0 * a
+    addu $t0, $t0, $t2  # t0 = t0 + c
+    rem $t0, $t0, $t3  # t0 = t0 % m
+
+    # Verifica se o valor é negativo
+    bltz $t0, convert_to_positive
+
+    li $v0, PRINT_STR
+    la $a0, coluna
+    syscall
+
+    # Imprime o valor aleatório da coluna
+    move $a0, $t0
+    li $v0, PRINT_INT
+    syscall
+
+    li $v0, PRINT_STR
+    la $a0, linebreak
+    syscall
+
+    move $s1, $t0  							# salva a coluna em $s1
+
+    j continua
+
+    convert_to_positive:
+    neg $t0, $t0  							# converte o valor negativo em positivo
+    j generateRandom  						# pula para o código de impressão da linha
 	
+posicionaHorizontal4:						# corrigir loop infinito	
+	j generateRandom						# chamada da função de gerar aleatório (colocar j caso não funcionar)
+	continua:
+	li $t0, 6								# t0 recebe o valor máximo para a coluna em uma embarcação de 4 espaços
+	bgt $s1, $t0, posicionaHorizontal4		# verifica se cabe um barco de 4 posições
+	lb $t1, barco							# t1 armazena o dado do barco
+	li $t2, 0								# inicializa o registrador t2
+	addi $t9, $s1, 4						# t9 armazena a posição final da embarcação
+	
+	move $t2, $s1							# t2 recebe o valor da coluna
 	li $t3, 0
 	beq $t3, $s0, loopLinha04
 	li $t3, 1
@@ -155,120 +150,123 @@ posicionaHorizontal4:	# deve verificar para qual lado posiciona
 	loopLinha04:
 		lb $t4, line0($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha04
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha04				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao04:
-			move $t2, $s1
 			sb $t1, line0($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao04
-		jr $ra
+			j end_loops
 	loopLinha14:
 		lb $t4, line1($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha14
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha14				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao14:
-			move $t2, $s1
 			sb $t1, line1($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao14
-		jr $ra
+			j end_loops
 	loopLinha24:
 		lb $t4, line2($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha24
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha24				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao24:
-			move $t2, $s1
 			sb $t1, line2($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao24
-		jr $ra
+			j end_loops
 	loopLinha34:
 		lb $t4, line3($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha34
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha34				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao34:
-			move $t2, $s1
 			sb $t1, line3($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao34
-		jr $ra
+			j end_loops
 	loopLinha44:
 		lb $t4, line4($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha44
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha44				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao44:
-			move $t2, $s1
 			sb $t1, line4($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao44
-		jr $ra
+			j end_loops
 	loopLinha54:
 		lb $t4, line5($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha54
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha54				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao54:
-			move $t2, $s1
 			sb $t1, line5($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao54
-		jr $ra
+			j end_loops
 	loopLinha64:
 		lb $t4, line6($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha64
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha64				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao64:
-			move $t2, $s1
 			sb $t1, line6($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao64
-		jr $ra
+			j end_loops
 	loopLinha74:
 		lb $t4, line7($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha74
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha74				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao74:
-			move $t2, $s1
 			sb $t1, line7($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao74
-		jr $ra
+			j end_loops
+
 	loopLinha84:
 		lb $t4, line8($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha84
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha84				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao84:
-			move $t2, $s1
 			sb $t1, line8($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao84
-		jr $ra
+			j end_loops
 	loopLinha94:
 		lb $t4, line9($t2)
 		addi $t2, $t2, 1
-		beq $t1, $t4, posicionaHorizontal4	# verifica se já há barco no local
-		blt $t2, $t9, loopLinha94
+		beq $t1, $t4, posicionaHorizontal4		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha94				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
 		posicionaEmbarcacao94:
-			move $t2, $s1
 			sb $t1, line9($t2)
 			addi $t2, $t2, 1
 			blt $t2, $t9, posicionaEmbarcacao94
+			j end_loops
+	end_loops:
 		jr $ra
 	# s1 = coluna
 	
 posicionaHorizontal2:
-	jal geraAleatorio	# chamada da função de gerar aleatório (colocar j caso não funcionar)
+	j generateRandom	# chamada da função de gerar aleatório (colocar j caso não funcionar)
 	li $t0, 8
 	bgt $s1, $t0, posicionaHorizontal2
-	li $t1, 'x'
+	lb $t1, 'x'
 	move $t2, $s1	# t2 = coluna
 	addi $t9, $t2, 1
 	li $t3, 0
@@ -414,7 +412,7 @@ posicionaHorizontal2:
 	# s1 = coluna
 	
 posicionaHorizontal1:
-	jal geraAleatorio
+	j generateRandom
 	li $t0, 'x'
 	move $t3, $s1
 	li $t1, 0
@@ -495,7 +493,7 @@ printMatriz:
 	li $t0, 10
 	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
 	
-PRINT_LOOP:
+PRINT_LOOP0:
 	lb $a0, line0($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -504,6 +502,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP0	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+
+PRINT_LOOP1:
 	lb $a0, line1($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -512,6 +523,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP1	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP2:
 	lb $a0, line2($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -520,6 +544,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP2	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP3:
 	lb $a0, line3($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -528,6 +565,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP3	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+
+PRINT_LOOP4:
 	lb $a0, line4($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -536,6 +586,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP4	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP5:
 	lb $a0, line5($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -544,6 +607,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP5	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP6:
 	lb $a0, line6($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -552,6 +628,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP6	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP7:
 	lb $a0, line7($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -560,6 +649,19 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP7	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP8:
 	lb $a0, line8($t9)		# carrega o dado do vetor
 	li $v0, PRINT_CHAR		# mostra o valor lido
 	syscall
@@ -568,17 +670,34 @@ PRINT_LOOP:
 	la $a0, spc
 	syscall
 	
-	lb $a0, line9($t9)		# carrega o dado do vetor
-	li $v0, PRINT_CHAR		# mostra o valor lido
-	syscall
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_LOOP8	# verifica se i > 0 (continua o loop)
 	
 	# quebra de linha
 	li $v0, PRINT_STR
 	la $a0, linebreak
 	syscall
 	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_LOOP9:
+	lb $a0, line9($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
 	addi $t0, $t0, -1		# decrementa o contador (i)
 	addi $t9, $t9, 1
-	bgtz $t0, PRINT_LOOP	# verifica se i > 0 (continua o loop)
+	bgtz $t0, PRINT_LOOP9	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
 
 	jr $ra
