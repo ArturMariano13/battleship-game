@@ -34,9 +34,11 @@ main:
 	jal welcome				# chama função de dar boas-vindas ao usuário
 	jal inicializaGeraAleatorio	# função para atribuir valores da geração aleatória
 	jal printMatriz			# chama função de printar a matriz
+	li $s3, 0
 	jal posicionaHorizontal4 #chama a função para posicionar embarcações de 4 espaços
 	jal printMatriz			# chama função de printar a matriz
-	jal posicionaHorizontal4 #chama a função para posicionar embarcações de 4 espaços
+	li $s3, 1
+	jal posicionaHorizontal2 #chama a função para posicionar embarcações de 4 espaços
 	jal printMatriz			# chama função de printar a matriz
 
 	
@@ -110,8 +112,15 @@ generateRandom:
     syscall
 
     move $s1, $t0  							# salva a coluna em $s1
-
-    j continua
+	
+	li $t0, 1
+	
+	beqz $s3, continue_execution4
+	beq $s3, $t0, continue_execution2
+continue_execution4:
+    j continua4
+continue_execution2:
+	j continua2
 
     convert_to_positive:
     neg $t0, $t0  							# converte o valor negativo em positivo
@@ -119,7 +128,7 @@ generateRandom:
 	
 posicionaHorizontal4:						# corrigir loop infinito	
 	j generateRandom						# chamada da função de gerar aleatório (colocar j caso não funcionar)
-	continua:
+	continua4:
 	li $t0, 6								# t0 recebe o valor máximo para a coluna em uma embarcação de 4 espaços
 	bgt $s1, $t0, posicionaHorizontal4		# verifica se cabe um barco de 4 posições
 	lb $t1, barco							# t1 armazena o dado do barco
@@ -261,6 +270,149 @@ posicionaHorizontal4:						# corrigir loop infinito
 	end_loops:
 		jr $ra
 	# s1 = coluna
+	
+posicionaHorizontal2:						# corrigir loop infinito	
+	j generateRandom						# chamada da função de gerar aleatório (colocar j caso não funcionar)
+	continua2:
+	li $t0, 9								# t0 recebe o valor máximo para a coluna em uma embarcação de 4 espaços
+	beq $s1, $t0, posicionaHorizontal2		# verifica se cabe um barco de 4 posições
+	lb $t1, barco							# t1 armazena o dado do barco
+	li $t2, 0								# inicializa o registrador t2
+	addi $t9, $s1, 2						# t9 armazena a posição final da embarcação
+	
+	move $t2, $s1							# t2 recebe o valor da coluna
+	li $t3, 0
+	beq $t3, $s0, loopLinha02
+	li $t3, 1
+	beq $t3, $s0, loopLinha12
+	li $t3, 2
+	beq $t3, $s0, loopLinha22
+	li $t3, 3
+	beq $t3, $s0, loopLinha32
+	li $t3, 4
+	beq $t3, $s0, loopLinha42
+	li $t3, 5
+	beq $t3, $s0, loopLinha52
+	li $t3, 6
+	beq $t3, $s0, loopLinha62
+	li $t3, 7
+	beq $t3, $s0, loopLinha72
+	li $t3, 8
+	beq $t3, $s0, loopLinha82
+	li $t3, 9
+	beq $t3, $s0, loopLinha92
+	loopLinha02:
+		lb $t4, line0($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha02				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao02:
+			sb $t1, line0($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao02
+			j end_loops2
+	loopLinha12:
+		lb $t4, line1($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha12				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao12:
+			sb $t1, line1($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao12
+			j end_loops2
+	loopLinha22:
+		lb $t4, line2($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha22				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao22:
+			sb $t1, line2($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao22
+			j end_loops2
+	loopLinha32:
+		lb $t4, line3($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha32				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao32:
+			sb $t1, line3($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao32
+			j end_loops2
+	loopLinha42:
+		lb $t4, line4($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha42				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao42:
+			sb $t1, line4($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao42
+			j end_loops2
+	loopLinha52:
+		lb $t4, line5($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha52				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao52:
+			sb $t1, line5($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao52
+			j end_loops2
+	loopLinha62:
+		lb $t4, line6($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha62				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao62:
+			sb $t1, line6($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao62
+			j end_loops2
+	loopLinha72:
+		lb $t4, line7($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha72				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao72:
+			sb $t1, line7($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao72
+			j end_loops2
+	loopLinha82:
+		lb $t4, line8($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha82				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao82:
+			sb $t1, line8($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao82
+			j end_loops2
+	loopLinha92:
+		lb $t4, line9($t2)
+		addi $t2, $t2, 1
+		beq $t1, $t4, posicionaHorizontal2		# verifica se já há barco no local
+		blt $t2, $t9, loopLinha92				# verifica se o contador atingiu o tamanho máximo da embarcação
+		move $t2, $s1							# t2 recebe o valor da coluna
+		posicionaEmbarcacao92:
+			sb $t1, line9($t2)
+			addi $t2, $t2, 1
+			blt $t2, $t9, posicionaEmbarcacao92
+			j end_loops2
+	end_loops2:
+		jr $ra
 	
 printMatriz:
 	li $t0, 10
