@@ -2,6 +2,10 @@
 a:  .word 1103515245  # Constante multiplicativa
 m:  .word 12345  # Constante aditiva
 c:  .word 10  # Módulo
+acertos:  .word 0
+erros:  .word 0
+tentativas: .word 0
+porcentagem: .word 0
 line0:	.byte '*','*','*','*','*','*','*','*','*','*'	
 line1:	.byte '*','*','*','*','*','*','*','*','*','*'
 line2:	.byte '*','*','*','*','*','*','*','*','*','*'
@@ -13,6 +17,18 @@ line7:	.byte '*','*','*','*','*','*','*','*','*','*'
 line8:	.byte '*','*','*','*','*','*','*','*','*','*'
 line9:	.byte '*','*','*','*','*','*','*','*','*','*'
 barco:	.byte 'x'
+agua: 	.byte '~'
+
+jogo0:	.byte '*','*','*','*','*','*','*','*','*','*'	
+jogo1:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo2:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo3:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo4:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo5:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo6:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo7:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo8:	.byte '*','*','*','*','*','*','*','*','*','*'
+jogo9:	.byte '*','*','*','*','*','*','*','*','*','*'
 	
 	welcome_msg:	.asciiz "Seja bem vindo ao Batalha Naval! Boa sorte!\n"
 	seed_rqst: 		.asciiz "\nInforme a seed para organizacao do tabuleiro: "
@@ -21,6 +37,20 @@ barco:	.byte 'x'
 	linha:			.asciiz "linha: "
 	coluna: 		.asciiz "coluna: "
 	passou: 		.asciiz "passou"
+	msg_acerto:         .asciiz "Acertou!!"
+	msg_erro:           .asciiz "Errou! Caiu na agua"
+	game:           .asciiz "\n O Jogo iniciou!!\n"
+	msg_linha:      .asciiz "Informe a linha: "
+	msg_coluna:     .asciiz "Informe a coluna " 
+	msg_parada:     .asciiz "Para parar o jogo, digite 15 na opcao linha."
+	msg_fim:        .asciiz "O jogo acabou."
+	msg_tentativasfinal: .asciiz "O total de tentativas foi:"
+	msg_acertofinal:  .asciiz "O total de acertos foi: "
+	msg_errosfinal: .asciiz "O total de erros foi: "
+	msg_porcentagem: .asciiz "A porcentagem total de acertos foi: "
+	porcentagemfinal: .asciiz "%"
+	msg_maior: .asciiz  "O numero que voce forneceu, e igual ou maior que 10!!"
+	msg_regramaior: .asciiz "Somente numeros entre 0 e 9."
 
 .text
 	.globl main
@@ -36,13 +66,19 @@ main:
 	jal printMatriz							# matriz sem embarcações posicionadas
 	li $s3, 4								# espécie de parâmetro para saber qual função será executada
 	jal posicionaHorizontal4 				# função p/ posicionar embarcações de 4 espaços
-	jal printMatriz							# função de printar a matriz
+	#jal printMatriz							# função de printar a matriz
 	li $s3, 2
 	jal posicionaHorizontal2 				# função p/ posicionar embarcações de 2 espaços
-	jal printMatriz							# função de printar a matriz
+	#jal printMatriz							# função de printar a matriz
 	li $s3, 1
 	jal posiciona1							# função p/ posicionar embarcações de 1 espaço
-	jal printMatriz							# função de printar a matriz
+	#jal printMatriz							# função de printar a matriz
+	li $s7, 0	# contador jogo
+	jogo:
+		jal printGame                           # função p/ começar o game
+		jal printMatriz
+		addi $s7, $s7, 1
+		beq $s7, 10, jogo
 	
 	li $v0, END_PROGRAM						# terminate program
 	syscall
@@ -77,18 +113,18 @@ generateRandom:
     # Verifica se o valor é negativo
     bltz $t0, convert_to_positive
 	
-    li $v0, PRINT_STR
-    la $a0, linha
-    syscall
+    #li $v0, PRINT_STR
+    #la $a0, linha
+    #syscall
 
     # Imprime o valor aleatório da linha
-    move $a0, $t0
-    li $v0, PRINT_INT
-    syscall
+    #move $a0, $t0
+    #li $v0, PRINT_INT
+    #syscall
 
-    li $v0, PRINT_STR
-    la $a0, linebreak
-    syscall
+    #li $v0, PRINT_STR
+    #la $a0, linebreak
+    #syscall
 
     move $s0, $t0  							# salva a linha em $s0
 
@@ -99,18 +135,18 @@ generateRandom:
     # Verifica se o valor é negativo
     bltz $t0, convert_to_positive
 
-    li $v0, PRINT_STR
-    la $a0, coluna
-    syscall
+    #li $v0, PRINT_STR
+    #la $a0, coluna
+    #syscall
 
     # Imprime o valor aleatório da coluna
-    move $a0, $t0
-    li $v0, PRINT_INT
-    syscall
+    #move $a0, $t0
+    #li $v0, PRINT_INT
+    #syscall
 
-    li $v0, PRINT_STR
-    la $a0, linebreak
-    syscall
+    #li $v0, PRINT_STR
+    #la $a0, linebreak
+    #syscall
 
     move $s1, $t0  							# salva a coluna em $s1
 	
@@ -691,3 +727,505 @@ PRINT_LOOP9:
 	syscall
 
 	jr $ra
+	
+	
+printGame: 
+    li $t9, 0  # t9 armazena as tentativas
+    li $t8, 0  # t8 armazena os erros
+	li $t7, 0 # t7 armazena os acertos
+	
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall 
+	
+    li $v0, PRINT_STR			       # syscall 4 (print string)
+	la $a0, msg_parada						# argument (string)
+	syscall	
+	li $v0, PRINT_STR			       # syscall 4 (print string)
+	la $a0, linebreak						# argument (string)
+	syscall	
+	li $v0, PRINT_STR			       # syscall 4 (print string)
+	la $a0, msg_regramaior						# argument (string)
+	syscall	
+	li $v0, PRINT_STR			       # syscall 4 (print string)
+	la $a0, linebreak						# argument (string)
+	syscall	
+    li $v0, PRINT_STR			       # syscall 4 (print string)
+	la $a0, game						# argument (string)
+	syscall	
+    j comecou	
+comecou:
+    li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+
+    li $v0, PRINT_STR						# syscall 4 (print string)
+	la $a0, msg_linha						# argument (string)
+	syscall		
+
+  	li $v0, READ_INT						# syscall 5 (read integer)
+	syscall
+	
+	move $t0, $v0 # t0 é a linha
+	li $t4, 15
+	beq $t0, $t4, parada  # teste para parar o jogo
+	
+	li $t4, 10
+	bge $t0, $t4, maior
+   
+    li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+   
+    li $v1, PRINT_STR		# mostra " "
+    la $a0, msg_coluna
+    syscall 
+	
+	li $v0, READ_INT				# syscall 5 (read integer)
+	syscall		
+   
+    move $t1, $v0 # t1 é a coluna
+	bge $t1, $t4, maior
+ 
+	lb $t6, barco	# t1 armazena o dado do barco
+	lb $t7, agua
+	
+	li $t5, 0 # dado temporario para fazer o teste beq
+	beq $t0, $t5, linhaJogo0
+	li $t5, 1
+	beq $t0, $t5, linhaJogo1
+	li $t5, 2
+	beq $t0, $t5, linhaJogo2
+	li $t5, 3
+	beq $t0, $t5, linhaJogo3
+	li $t5, 4
+	beq $t0, $t5, linhaJogo4
+	li $t5, 5
+	beq $t0, $t5, linhaJogo5
+	li $t5, 6
+	beq $t0, $t5, linhaJogo6
+	li $t5, 7
+	beq $t0, $t5, linhaJogo7
+	li $t5, 8
+	beq $t0, $t5, linhaJogo8
+	li $t5, 9
+	beq $t0, $t5, linhaJogo9
+	
+	linhaJogo0:
+	    lb $t3, line0($t1)		# carrega o dado do vetor
+		bne $t6, $t3, errou0
+		sb $t6, jogo0($t1)
+		j acerto
+		errou0:
+			sb $t7, jogo0($t1)
+			j erro
+	linhaJogo1:
+		lb $t3, line1($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou1
+		sb $t6, jogo1($t1)
+		j acerto
+		errou1:
+			sb $t7, jogo1($t1)
+		j erro
+	linhaJogo2:
+		lb $t3, line2($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou2
+		sb $t6, jogo2($t1)
+		j acerto
+		errou2:
+			sb $t7, jogo2($t1)
+		j erro
+	linhaJogo3:
+		lb $t3, line3($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou3
+		sb $t6, jogo3($t1)
+		j acerto
+		errou3:
+			sb $t7, jogo3($t1)
+		j erro
+	linhaJogo4:
+		lb $t3, line4($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou4
+		sb $t6, jogo4($t1)
+		j acerto
+		errou4:
+			sb $t7, jogo4($t1)
+		j erro
+	linhaJogo5:
+		lb $t3, line5($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou5
+		sb $t6, jogo5($t1)
+		j acerto
+		errou5:
+			sb $t7, jogo5($t1)
+		j erro
+	linhaJogo6:
+		lb $t3, line6($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou6
+		sb $t6, jogo6($t1)
+		j acerto
+		errou6:
+			sb $t7, jogo6($t1)
+		j erro
+	linhaJogo7:
+	    lb $t3, line7($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou7
+		sb $t6, jogo7($t1)
+		j acerto
+		errou7:
+			sb $t7, jogo7($t1)
+		j erro
+	linhaJogo8:
+	    lb $t3, line8($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou8
+		sb $t6, jogo8($t1)
+		j acerto
+		errou8:
+			sb $t7, jogo8($t1)
+		j erro
+	linhaJogo9:
+		lb $t3, line9($t1)		# carrega o dado do vetor
+		bne $t6, $t3 , errou9
+		sb $t6, jogo9($t1)
+		j acerto
+		errou9:
+			sb $t7, jogo9($t1)
+		j erro
+		
+	acerto:
+	 li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	 li $v0, PRINT_STR						# syscall 4 (print string)
+	 la $a0, msg_acerto						# argument (string)
+	 syscall
+	 addi $t7, $t7, 1
+	 addi $t9, $t9, 1 #aumentar o contador de tentativas
+	  li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	 j printJogo
+
+    erro:
+	 li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	 li $v0, PRINT_STR						# syscall 4 (print string)
+	 la $a0, msg_erro						# argument (string)
+	 syscall
+	 addi $t8, $t8, 1
+	 addi $t9, $t9, 1 #aumentar o contador de tentativas
+	  li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	 j printJogo
+	 
+	maior: 
+	 li $v0, PRINT_STR		# mostra " "
+     la $a0, linebreak
+     syscall 
+	 
+	 li $v0, PRINT_STR		# mostra " "
+     la $a0, msg_maior
+     syscall
+
+     li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall
+
+	
+	 
+	 j printJogo
+	   
+   	
+	parada:
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall 
+	
+	sw $t9, tentativas
+	sw $t8, erros
+	sw $t7, acertos
+		
+	mul $t7, $t7, 100     # Multiplica o número de acertos por 100
+    div $t7, $t9          # Divide o resultado pelo número de tentativas
+
+    mflo $t2     
+	
+	sw $t2, porcentagem
+	
+	 
+	li $v0, PRINT_STR						# syscall 4 (print string)
+	la $a0, msg_fim						# argument (string)
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall 
+	 
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, msg_tentativasfinal
+    syscall 
+	 
+	li $v0, PRINT_INT
+    lw $a0, tentativas
+    syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall 
+	 
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, msg_acertofinal
+    syscall 
+	 
+	li $v0, PRINT_INT
+    lw $a0, acertos
+    syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall 
+	 
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, msg_errosfinal
+    syscall 
+	 
+	li $v0, PRINT_INT
+    lw $a0, erros
+    syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, linebreak
+    syscall 
+	 
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, msg_porcentagem
+    syscall 
+	 
+	li $v0, PRINT_INT
+    lw $a0, porcentagem
+    syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+    la $a0, porcentagemfinal
+    syscall 
+	
+	jr $ra
+	
+printJogo:
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO0:
+	lb $a0, jogo0($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO0	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+
+PRINT_JOGO1:
+	lb $a0, jogo1($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO1	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO2:
+	lb $a0, jogo2($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO2	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO3:
+	lb $a0, jogo3($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO3	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+
+PRINT_JOGO4:
+	lb $a0, jogo4($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO4	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO5:
+	lb $a0, jogo5($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO5	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO6:
+	lb $a0, jogo6($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO6	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO7:
+	lb $a0, jogo7($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO7	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO8:
+	lb $a0, jogo8($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO8	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	li $t0, 10
+	li $t9, 0				# inicializa $t9 como 0 (base do endereço)
+	
+PRINT_JOGO9:
+	lb $a0, jogo9($t9)		# carrega o dado do vetor
+	li $v0, PRINT_CHAR		# mostra o valor lido
+	syscall
+	
+	li $v0, PRINT_STR		# mostra " "
+	la $a0, spc
+	syscall
+	
+	addi $t0, $t0, -1		# decrementa o contador (i)
+	addi $t9, $t9, 1
+	bgtz $t0, PRINT_JOGO9	# verifica se i > 0 (continua o loop)
+	
+	# quebra de linha
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	j comecou
