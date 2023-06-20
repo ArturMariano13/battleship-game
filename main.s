@@ -6,6 +6,8 @@ acertos:  .word 0
 erros:  .word 0
 tentativas: .word 0
 porcentagem: .word 0
+
+# MATRIZ PARA ARMAZENAR AS EMBARCAÇÕES
 line0:	.byte '*','*','*','*','*','*','*','*','*','*'	
 line1:	.byte '*','*','*','*','*','*','*','*','*','*'
 line2:	.byte '*','*','*','*','*','*','*','*','*','*'
@@ -19,6 +21,7 @@ line9:	.byte '*','*','*','*','*','*','*','*','*','*'
 barco:	.byte 'x'
 agua: 	.byte '~'
 
+# MATRIZ PARA ARMAZENAR BARCOS, ESPAÇOS NÃO TESTADOS E ÁGUA
 jogo0:	.byte '*','*','*','*','*','*','*','*','*','*'	
 jogo1:	.byte '*','*','*','*','*','*','*','*','*','*'
 jogo2:	.byte '*','*','*','*','*','*','*','*','*','*'
@@ -34,15 +37,13 @@ jogo9:	.byte '*','*','*','*','*','*','*','*','*','*'
 	seed_rqst: 		.asciiz "\nInforme a seed para organizacao do tabuleiro: "
 	spc: 			.asciiz " "
 	linebreak:		.asciiz "\n"
-	linha:			.asciiz "linha: "
-	coluna: 		.asciiz "coluna: "
-	passou: 		.asciiz "passou"
 	msg_acerto:         .asciiz "Acertou!!"
 	msg_erro:           .asciiz "Errou! Caiu na agua"
+	msg_jaFoi: 		.asciiz "Erro! Coordenadas ja testadas!"
 	game:           .asciiz "\n O Jogo iniciou!!\n"
 	msg_linha:      .asciiz "Informe a linha: "
 	msg_coluna:     .asciiz "Informe a coluna " 
-	msg_parada:     .asciiz "Para parar o jogo, digite 15 na opcao linha."
+	msg_parada:     .asciiz "O jogo acaba apos 10 rodadas."
 	msg_fim:        .asciiz "O jogo acabou."
 	msg_tentativasfinal: .asciiz "O total de tentativas foi:"
 	msg_acertofinal:  .asciiz "O total de acertos foi: "
@@ -50,7 +51,7 @@ jogo9:	.byte '*','*','*','*','*','*','*','*','*','*'
 	msg_porcentagem: .asciiz "A porcentagem total de acertos foi: "
 	porcentagemfinal: .asciiz "%"
 	msg_maior: .asciiz  "O numero que voce forneceu, e igual ou maior que 10!!"
-	msg_regramaior: .asciiz "Somente numeros entre 0 e 9."
+	msg_regramaior: .asciiz "Insira somente numeros entre 0 e 9."
 
 .text
 	.globl main
@@ -66,22 +67,12 @@ main:
 	jal printMatriz							# matriz sem embarcações posicionadas
 	li $s3, 4								# espécie de parâmetro para saber qual função será executada
 	jal posicionaHorizontal4 				# função p/ posicionar embarcações de 4 espaços
-	#jal printMatriz							# função de printar a matriz
 	li $s3, 2
 	jal posicionaHorizontal2 				# função p/ posicionar embarcações de 2 espaços
-	#jal printMatriz							# função de printar a matriz
 	li $s3, 1
 	jal posiciona1							# função p/ posicionar embarcações de 1 espaço
-	#jal printMatriz							# função de printar a matriz
-	li $s7, 0	# contador jogo
-	jogo:
-		jal printGame                           # função p/ começar o game
-		jal printMatriz
-		addi $s7, $s7, 1
-		beq $s7, 10, jogo
-	
-	li $v0, END_PROGRAM						# terminate program
-	syscall
+	li $s7, -1	# contador jogo
+	jal printGame                           # função p/ começar o game
 
 # BOAS-VINDAS
 welcome:
@@ -113,19 +104,6 @@ generateRandom:
     # Verifica se o valor é negativo
     bltz $t0, convert_to_positive
 	
-    #li $v0, PRINT_STR
-    #la $a0, linha
-    #syscall
-
-    # Imprime o valor aleatório da linha
-    #move $a0, $t0
-    #li $v0, PRINT_INT
-    #syscall
-
-    #li $v0, PRINT_STR
-    #la $a0, linebreak
-    #syscall
-
     move $s0, $t0  							# salva a linha em $s0
 
     mul $t0, $t0, $t1  						# t0 = t0 * a
@@ -134,19 +112,6 @@ generateRandom:
 
     # Verifica se o valor é negativo
     bltz $t0, convert_to_positive
-
-    #li $v0, PRINT_STR
-    #la $a0, coluna
-    #syscall
-
-    # Imprime o valor aleatório da coluna
-    #move $a0, $t0
-    #li $v0, PRINT_INT
-    #syscall
-
-    #li $v0, PRINT_STR
-    #la $a0, linebreak
-    #syscall
 
     move $s1, $t0  							# salva a coluna em $s1
 	
@@ -730,12 +695,11 @@ PRINT_LOOP9:
 	
 	
 printGame: 
-    li $t9, 0  # t9 armazena as tentativas
-    li $t8, 0  # t8 armazena os erros
-	li $t7, 0 # t7 armazena os acertos
+    li $s3, 0  # t9 armazena as tentativas
+    li $s4, 0  # t8 armazena os erros
+	li $s5, 0 # t7 armazena os acertos
 	
-	
-	li $v0, PRINT_STR		# mostra " "
+	li $v0, PRINT_STR		# mostra "\n"
     la $a0, linebreak
     syscall 
 	
@@ -756,6 +720,8 @@ printGame:
 	syscall	
     j comecou	
 comecou:
+	addi $s7, $s7, 1
+	beq $s7, 10, fim_jogo	# jogo limitado em 10 rodadas
     li $v0, PRINT_STR
 	la $a0, linebreak
 	syscall
@@ -768,8 +734,6 @@ comecou:
 	syscall
 	
 	move $t0, $v0 # t0 é a linha
-	li $t4, 15
-	beq $t0, $t4, parada  # teste para parar o jogo
 	
 	li $t4, 10
 	bge $t0, $t4, maior
@@ -814,6 +778,9 @@ comecou:
 	
 	linhaJogo0:
 	    lb $t3, line0($t1)		# carrega o dado do vetor
+		lb $t9, jogo0($t1)
+		beq $t9, $t6, jaFoi		# se for um 'x' (barco), verifica que aquela posicao já foi
+		beq $t7, $t9, jaFoi		# se for um '~' (água), verifica que aquela posicao já foi
 		bne $t6, $t3, errou0
 		sb $t6, jogo0($t1)
 		j acerto
@@ -822,6 +789,9 @@ comecou:
 			j erro
 	linhaJogo1:
 		lb $t3, line1($t1)		# carrega o dado do vetor
+		lb $t9, jogo1($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou1
 		sb $t6, jogo1($t1)
 		j acerto
@@ -830,6 +800,9 @@ comecou:
 		j erro
 	linhaJogo2:
 		lb $t3, line2($t1)		# carrega o dado do vetor
+		lb $t9, jogo2($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou2
 		sb $t6, jogo2($t1)
 		j acerto
@@ -838,6 +811,9 @@ comecou:
 		j erro
 	linhaJogo3:
 		lb $t3, line3($t1)		# carrega o dado do vetor
+		lb $t9, jogo3($t1)
+		beq $t9, $t7, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou3
 		sb $t6, jogo3($t1)
 		j acerto
@@ -846,6 +822,9 @@ comecou:
 		j erro
 	linhaJogo4:
 		lb $t3, line4($t1)		# carrega o dado do vetor
+		lb $t9, jogo4($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou4
 		sb $t6, jogo4($t1)
 		j acerto
@@ -854,6 +833,9 @@ comecou:
 		j erro
 	linhaJogo5:
 		lb $t3, line5($t1)		# carrega o dado do vetor
+		lb $t9, jogo5($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou5
 		sb $t6, jogo5($t1)
 		j acerto
@@ -862,6 +844,9 @@ comecou:
 		j erro
 	linhaJogo6:
 		lb $t3, line6($t1)		# carrega o dado do vetor
+		lb $t9, jogo6($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou6
 		sb $t6, jogo6($t1)
 		j acerto
@@ -870,6 +855,9 @@ comecou:
 		j erro
 	linhaJogo7:
 	    lb $t3, line7($t1)		# carrega o dado do vetor
+		lb $t9, jogo7($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou7
 		sb $t6, jogo7($t1)
 		j acerto
@@ -878,6 +866,9 @@ comecou:
 		j erro
 	linhaJogo8:
 	    lb $t3, line8($t1)		# carrega o dado do vetor
+		lb $t9, jogo8($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou8
 		sb $t6, jogo8($t1)
 		j acerto
@@ -886,6 +877,9 @@ comecou:
 		j erro
 	linhaJogo9:
 		lb $t3, line9($t1)		# carrega o dado do vetor
+		lb $t9, jogo9($t1)
+		beq $t9, $t6, jaFoi
+		beq $t7, $t9, jaFoi
 		bne $t6, $t3 , errou9
 		sb $t6, jogo9($t1)
 		j acerto
@@ -901,8 +895,8 @@ comecou:
 	 li $v0, PRINT_STR						# syscall 4 (print string)
 	 la $a0, msg_acerto						# argument (string)
 	 syscall
-	 addi $t7, $t7, 1
-	 addi $t9, $t9, 1 #aumentar o contador de tentativas
+	 addi $s5, $s5, 1
+	 addi $s3, $s3, 1 #aumentar o contador de tentativas
 	  li $v0, PRINT_STR
 	la $a0, linebreak
 	syscall
@@ -916,9 +910,24 @@ comecou:
 	 li $v0, PRINT_STR						# syscall 4 (print string)
 	 la $a0, msg_erro						# argument (string)
 	 syscall
-	 addi $t8, $t8, 1
-	 addi $t9, $t9, 1 #aumentar o contador de tentativas
+	 addi $s4, $s4, 1
+	 addi $s3, $s3, 1 #aumentar o contador de tentativas
 	  li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	 j printJogo
+	 
+	jaFoi:
+	li $v0, PRINT_STR
+	la $a0, linebreak
+	syscall
+	
+	 li $v0, PRINT_STR						# syscall 4 (print string)
+	 la $a0, msg_jaFoi						# argument (string)
+	 syscall
+	 addi $s3, $s3, 1 #aumentar o contador de tentativas
+	 addi $s4, $s4, 1	# incrementa o contador de erros
+	 li $v0, PRINT_STR
 	la $a0, linebreak
 	syscall
 	 j printJogo
@@ -935,24 +944,20 @@ comecou:
      li $v0, PRINT_STR		# mostra " "
     la $a0, linebreak
     syscall
-
-	
-	 
 	 j printJogo
 	   
    	
-	parada:
-	
+parada:
 	li $v0, PRINT_STR		# mostra " "
     la $a0, linebreak
     syscall 
 	
-	sw $t9, tentativas
-	sw $t8, erros
-	sw $t7, acertos
+	sw $s3, tentativas
+	sw $s4, erros
+	sw $s5, acertos
 		
-	mul $t7, $t7, 100     # Multiplica o número de acertos por 100
-    div $t7, $t9          # Divide o resultado pelo número de tentativas
+	mul $s5, $s5, 100     # Multiplica o número de acertos por 100
+    div $s5, $s3          # Divide o resultado pelo número de tentativas
 
     mflo $t2     
 	
@@ -1229,3 +1234,8 @@ PRINT_JOGO9:
 	syscall
 	
 	j comecou
+	
+fim_jogo:
+	jal parada
+	li $v0, END_PROGRAM						# terminate program
+	syscall
